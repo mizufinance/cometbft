@@ -1115,7 +1115,13 @@ func (cs *State) enterNewRound(height int64, round int32) {
 }
 
 // needProofBlock returns true on the first height (so the genesis app hash is signed right away)
-// and where the last block (height-1) caused the app hash to change
+// and where the last block (height-1) caused the app hash to change.
+//
+// When ProofBlockMode is set to ProofBlockModeOnlyAfterTx, an AppHash change
+// is treated as needing a proof block only if the previous block also carried
+// at least one transaction. This lets pure begin/end-blocker AppHash drift
+// during idle periods avoid forcing back-to-back blocks, while still committing
+// the AppHash within one block of any user/relayer-driven activity.
 func (cs *State) needProofBlock(height int64) bool {
 	if height == cs.state.InitialHeight {
 		return true
@@ -1128,7 +1134,14 @@ func (cs *State) needProofBlock(height int64) bool {
 		return true
 	}
 
-	return !bytes.Equal(cs.state.AppHash, lastBlockMeta.Header.AppHash)
+	if bytes.Equal(cs.state.AppHash, lastBlockMeta.Header.AppHash) {
+		return false
+	}
+
+	if cs.config.ProofBlockMode == cfg.ProofBlockModeOnlyAfterTx && lastBlockMeta.NumTxs == 0 {
+		return false
+	}
+	return true
 }
 
 // Enter (CreateEmptyBlocks): from enterNewRound(height,round)

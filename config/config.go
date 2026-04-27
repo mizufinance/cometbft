@@ -980,6 +980,24 @@ func (cfg *BlockSyncConfig) ValidateBasic() error {
 //-----------------------------------------------------------------------------
 // ConsensusConfig
 
+// ProofBlockMode controls when CometBFT forces an extra block solely to commit
+// the previous block's AppHash. The previous behavior corresponds to
+// ProofBlockModeAlways and remains the default.
+type ProofBlockMode string
+
+const (
+	// ProofBlockModeAlways forces a proof block on every AppHash change,
+	// even if the previous block had no transactions. This is the legacy
+	// behavior and the default for backward compatibility.
+	ProofBlockModeAlways ProofBlockMode = "always"
+
+	// ProofBlockModeOnlyAfterTx forces a proof block only when the AppHash
+	// changed AND the previous block had at least one transaction. Lets the
+	// chain stay idle through pure begin/end-blocker AppHash drift while
+	// still committing user/relayer-driven state within one block.
+	ProofBlockModeOnlyAfterTx ProofBlockMode = "only_after_tx"
+)
+
 // ConsensusConfig defines the configuration for the Tendermint consensus algorithm, adopted by CometBFT,
 // including timeouts and details about the WAL and the block structure.
 type ConsensusConfig struct {
@@ -1012,6 +1030,10 @@ type ConsensusConfig struct {
 	CreateEmptyBlocks         bool          `mapstructure:"create_empty_blocks"`
 	CreateEmptyBlocksInterval time.Duration `mapstructure:"create_empty_blocks_interval"`
 
+	// ProofBlockMode controls when an AppHash-driven proof block is forced.
+	// See ProofBlockMode constants for valid values.
+	ProofBlockMode ProofBlockMode `mapstructure:"proof_block_mode"`
+
 	// Reactor sleep duration parameters
 	PeerGossipSleepDuration     time.Duration `mapstructure:"peer_gossip_sleep_duration"`
 	PeerQueryMaj23SleepDuration time.Duration `mapstructure:"peer_query_maj23_sleep_duration"`
@@ -1036,6 +1058,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		SkipTimeoutCommit:           false,
 		CreateEmptyBlocks:           true,
 		CreateEmptyBlocksInterval:   0 * time.Second,
+		ProofBlockMode:              ProofBlockModeAlways,
 		PeerGossipSleepDuration:     100 * time.Millisecond,
 		PeerQueryMaj23SleepDuration: 2000 * time.Millisecond,
 		DoubleSignCheckHeight:       int64(0),
@@ -1132,6 +1155,12 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 	}
 	if cfg.CreateEmptyBlocksInterval < 0 {
 		return errors.New("create_empty_blocks_interval can't be negative")
+	}
+	switch cfg.ProofBlockMode {
+	case ProofBlockModeAlways, ProofBlockModeOnlyAfterTx:
+	default:
+		return fmt.Errorf("unknown proof_block_mode %q (valid: %q, %q)",
+			cfg.ProofBlockMode, ProofBlockModeAlways, ProofBlockModeOnlyAfterTx)
 	}
 	if cfg.PeerGossipSleepDuration < 0 {
 		return errors.New("peer_gossip_sleep_duration can't be negative")
