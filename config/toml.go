@@ -589,6 +589,12 @@ skip_timeout_commit = {{ .Consensus.SkipTimeoutCommit }}
 create_empty_blocks = {{ .Consensus.CreateEmptyBlocks }}
 create_empty_blocks_interval = "{{ .Consensus.CreateEmptyBlocksInterval }}"
 
+# When the previous block changed AppHash, when must we produce a
+# proof block to commit it?
+#   "always"        - every state change forces a block (default)
+#   "only_after_tx" - only when the previous block also had >= 1 tx
+proof_block_mode = "{{ .Consensus.ProofBlockMode }}"
+
 # Reactor sleep duration parameters
 peer_gossip_sleep_duration = "{{ .Consensus.PeerGossipSleepDuration }}"
 peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
