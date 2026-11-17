@@ -658,12 +658,13 @@ func (n *Node) ConfigureRPC() (*rpccore.Environment, error) {
 	if pubKey == nil || err != nil {
 		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
+	blockStore, stateStore := rpcStores(n.blockStore, n.stateStore)
 	rpcCoreEnv := rpccore.Environment{
 		ProxyAppQuery:   n.proxyApp.Query(),
 		ProxyAppMempool: n.proxyApp.Mempool(),
 
-		StateStore:     n.stateStore,
-		BlockStore:     n.blockStore,
+		StateStore:     stateStore,
+		BlockStore:     blockStore,
 		EvidencePool:   n.evidencePool,
 		ConsensusState: n.consensusState,
 		P2PPeers:       n.sw,
